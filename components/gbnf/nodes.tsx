@@ -12,6 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChangeEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { useEditor } from "./editor/context/editor-context";
+import { GBNFEdge } from "./types";
 
 interface NodeData {
   label: string;
@@ -47,6 +49,16 @@ function NodeWrapper({
   // Determine valid connection types based on node type
   const canBeSource = id === "start" || !["end"].includes(id);
   const canBeTarget = id === "end" || !["start"].includes(id);
+
+  const { edges, setEdges } = useEditor();
+
+  // Check for existing connections to start/end
+  const existingStartConnection = edges.find(
+    (edge: GBNFEdge) => edge.source === "start" && edge.target === id
+  );
+  const existingEndConnection = edges.find(
+    (edge: GBNFEdge) => edge.source === id && edge.target === "end"
+  );
 
   const emitEvent = (type: string) => {
     const event = new CustomEvent(type, { detail: { id } });
@@ -90,6 +102,67 @@ function NodeWrapper({
         <ContextMenuItem onSelect={() => emitEvent("toggleLoop")}>
           Toggle Self-Connection
         </ContextMenuItem>
+        <ContextMenuSeparator />
+        {canBeTarget && (
+          <ContextMenuItem
+            className={
+              existingStartConnection ? "text-red-400" : "text-green-400"
+            }
+            onSelect={() => {
+              if (existingStartConnection) {
+                // Remove the existing connection
+                setEdges((eds: GBNFEdge[]) =>
+                  eds.filter((edge) => edge.id !== existingStartConnection.id)
+                );
+              } else {
+                // Create new connection to start
+                setEdges((eds: GBNFEdge[]) => [
+                  ...eds,
+                  {
+                    id: `start->${id}`,
+                    source: "start",
+                    target: id,
+                    type: "bezier",
+                    style: { stroke: "#666" },
+                  },
+                ]);
+              }
+            }}
+          >
+            {existingStartConnection
+              ? "Disconnect from Start"
+              : "Connect to Start"}
+          </ContextMenuItem>
+        )}
+        {canBeSource && (
+          <ContextMenuItem
+            className={
+              existingEndConnection ? "text-green-400" : "text-red-400"
+            }
+            onSelect={() => {
+              if (existingEndConnection) {
+                // Remove the existing connection
+                setEdges((eds: GBNFEdge[]) =>
+                  eds.filter((edge) => edge.id !== existingEndConnection.id)
+                );
+              } else {
+                // Create new connection to end
+                setEdges((eds: GBNFEdge[]) => [
+                  ...eds,
+                  {
+                    id: `${id}->end`,
+                    source: id,
+                    target: "end",
+                    type: "bezier",
+                    style: { stroke: "#666" },
+                  },
+                ]);
+              }
+            }}
+          >
+            {existingEndConnection ? "Disconnect from End" : "Connect to End"}
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => emitEvent("disconnectIncoming")}>
           Disconnect All Incoming
