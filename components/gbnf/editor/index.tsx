@@ -349,7 +349,7 @@ function GBNFEditorInner({
                 }}
               >
                 <div className="flex flex-col items-start">
-                  <span>Connect to End</span>
+                  <span className="text-red-400">Connect to End</span>
                   <span className="text-xs text-muted-foreground">
                     Connect directly to the end node
                   </span>
