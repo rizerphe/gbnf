@@ -32,6 +32,11 @@ export interface SavedGrammar {
   updatedAt: number;
 }
 
+export interface GBNFRule {
+  name: string;
+  intrinsic: string;
+}
+
 export const initialNodes: GBNFNode[] = [
   {
     id: "start",

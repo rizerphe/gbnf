@@ -1,4 +1,5 @@
-import { GBNFNode, GBNFEdge } from "../types";
+import { GBNFNode, GBNFEdge, GBNFRule } from "../types";
+import { optimize } from "./optimizations";
 
 function normalizeIdentifier(name: string): string {
   const normalized = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
@@ -38,11 +39,9 @@ function getIntrinsicDefinition(node: GBNFNode): string {
     case "nonNewlineNode":
       return "[^\\n]";
     case "identifierNode":
-      // This will be handled specially in the rule generation
-      return "";
+      return "[a-zA-Z_] [a-zA-Z0-9_]*";
     case "timeNode":
-      // This will be handled specially in the rule generation
-      return "";
+      return '[0-9] [0-9]? ("s" | "m" | "h" | "d" | "w" | "mo" | "y")';
   }
   return "";
 }
@@ -67,12 +66,9 @@ export function generateGBNF(nodes: GBNFNode[], edges: GBNFEdge[]): string {
     {
       name: string;
       intrinsic: string;
-      isComplex?: boolean;
     }
   >(
     nodes.map((node, index) => {
-      const isComplex =
-        node.type === "identifierNode" || node.type === "timeNode";
       let ruleName: string;
 
       if (node.type === "startNode") {
@@ -92,7 +88,6 @@ export function generateGBNF(nodes: GBNFNode[], edges: GBNFEdge[]): string {
         {
           name: ruleName,
           intrinsic: getIntrinsicDefinition(node),
-          isComplex,
         },
       ];
     })
@@ -107,30 +102,20 @@ export function generateGBNF(nodes: GBNFNode[], edges: GBNFEdge[]): string {
     adjacencyList.set(ownRules.get(edge.source)!.name, sourceEdges);
   });
 
-  // Generate special rules for complex nodes
-  const complexRules = new Map<string, string>();
-  nodes.forEach((node) => {
-    const rule = ownRules.get(node.id);
-    if (!rule?.isComplex) return;
-
-    switch (node.type) {
-      case "identifierNode":
-        complexRules.set(rule.name, `${rule.name} ::= [a-zA-Z_] [a-zA-Z0-9_]*`);
-        break;
-      case "timeNode":
-        complexRules.set(
-          rule.name,
-          `${rule.name} ::= [0-9] [0-9]? ("s" | "m" | "h" | "d" | "w" | "mo" | "y")`
-        );
-        break;
+  // Create a name-based map of rules for optimization
+  const rulesByName = new Map<string, GBNFRule>();
+  for (const [, rule] of ownRules) {
+    if (rule.name) {
+      rulesByName.set(rule.name, rule);
     }
-  });
+  }
 
-  // Format the rules, ensuring root is first, followed by complex rules
+  // Optimizations go here
+  optimize(adjacencyList, rulesByName);
+
+  // Format the rules, ensuring root is first
   return [
-    ...nodes
-      .map((node) => ownRules.get(node.id)!)
-      .filter((rule) => !rule.isComplex)
+    ...Array.from(rulesByName.values())
       .map((rule) => [
         rule.name,
         (
@@ -145,7 +130,6 @@ export function generateGBNF(nodes: GBNFNode[], edges: GBNFEdge[]): string {
         return a.localeCompare(b);
       })
       .map(([name, definition]) => definition && `${name} ::= ${definition}`),
-    ...Array.from(complexRules.values()),
   ]
     .filter(Boolean)
     .join("\n");
