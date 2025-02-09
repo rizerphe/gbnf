@@ -40,8 +40,7 @@ function GBNFEditorInner({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const { isFullscreen, toggleFullscreen, dismissPrompt } =
-    useFullscreen();
+  const { isFullscreen, toggleFullscreen, dismissPrompt } = useFullscreen();
 
   const {
     nodes,
@@ -201,6 +200,20 @@ function GBNFEditorInner({
 
             const handleType = connectionState?.fromHandle?.type;
 
+            // Check for existing connection to start/end
+            let existingConnection = null;
+            if (fromNodeId) {
+              existingConnection = edges.find(
+                (edge) =>
+                  (handleType === "target" &&
+                    edge.source === "start" &&
+                    edge.target === fromNodeId) ||
+                  (handleType === "source" &&
+                    edge.source === fromNodeId &&
+                    edge.target === "end")
+              );
+            }
+
             contextMenuHandlers.setContextMenu({
               x: clientX,
               y: clientY,
@@ -208,6 +221,13 @@ function GBNFEditorInner({
                 ? {
                     sourceNode: fromNodeId,
                     handleType,
+                    existingConnection: existingConnection
+                      ? {
+                          id: existingConnection.id,
+                          source: existingConnection.source,
+                          target: existingConnection.target,
+                        }
+                      : undefined,
                   }
                 : {}),
               showEndOption: Boolean(fromNodeId),
@@ -331,27 +351,65 @@ function GBNFEditorInner({
                       contextMenuHandlers.contextMenu.sourceNode;
                     const handleType =
                       contextMenuHandlers.contextMenu.handleType;
-                    setEdges((eds: GBNFEdge[]) => [
-                      ...eds,
-                      {
-                        id:
-                          handleType === "target"
-                            ? `end->${sourceNode}`
-                            : `${sourceNode}->end`,
-                        source: handleType === "target" ? "end" : sourceNode,
-                        target: handleType === "target" ? sourceNode : "end",
-                        type: "bezier",
-                        style: { stroke: "#666" },
-                      },
-                    ]);
+                    const existingConnection =
+                      contextMenuHandlers.contextMenu.existingConnection;
+
+                    if (existingConnection) {
+                      // Remove the existing connection
+                      setEdges((eds: GBNFEdge[]) =>
+                        eds.filter((edge) => edge.id !== existingConnection.id)
+                      );
+                    } else {
+                      // Create new connection
+                      setEdges((eds: GBNFEdge[]) => [
+                        ...eds,
+                        {
+                          id:
+                            handleType === "target"
+                              ? `start->${sourceNode}`
+                              : `${sourceNode}->end`,
+                          source:
+                            handleType === "target" ? "start" : sourceNode,
+                          target: handleType === "target" ? sourceNode : "end",
+                          type: "bezier",
+                          style: { stroke: "#666" },
+                        },
+                      ]);
+                    }
                   }
                   contextMenuHandlers.setContextMenu(null);
                 }}
               >
                 <div className="flex flex-col items-start">
-                  <span className="text-red-400">Connect to End</span>
+                  <span
+                    className={
+                      contextMenuHandlers.contextMenu?.existingConnection
+                        ? contextMenuHandlers.contextMenu?.handleType ===
+                          "target"
+                          ? "text-red-400" // Red for disconnecting from start
+                          : "text-green-400" // Green for disconnecting from end
+                        : contextMenuHandlers.contextMenu?.handleType ===
+                          "target"
+                        ? "text-green-400" // Green for connecting to start
+                        : "text-red-400" // Red for connecting to end
+                    }
+                  >
+                    {contextMenuHandlers.contextMenu?.existingConnection
+                      ? contextMenuHandlers.contextMenu?.handleType === "target"
+                        ? "Disconnect from Start"
+                        : "Disconnect from End"
+                      : contextMenuHandlers.contextMenu?.handleType === "target"
+                      ? "Connect to Start"
+                      : "Connect to End"}
+                  </span>
                   <span className="text-xs text-muted-foreground">
-                    Connect directly to the end node
+                    {contextMenuHandlers.contextMenu?.existingConnection
+                      ? contextMenuHandlers.contextMenu?.handleType === "target"
+                        ? "Remove connection to the start node"
+                        : "Remove connection to the end node"
+                      : contextMenuHandlers.contextMenu?.handleType === "target"
+                      ? "Connect directly to the start node"
+                      : "Connect directly to the end node"}
                   </span>
                 </div>
               </button>

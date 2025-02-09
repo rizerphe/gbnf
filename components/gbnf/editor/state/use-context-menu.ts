@@ -14,6 +14,7 @@ export interface ContextMenuState {
   targetNode?: string;
   showEndOption?: boolean;
   handleType?: "source" | "target";
+  existingConnection?: { id: string; source: string; target: string };
 }
 
 export interface ContextMenuHandlers {
