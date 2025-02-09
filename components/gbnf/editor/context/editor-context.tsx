@@ -63,7 +63,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   // Auto-save effect without debouncing
   useEffect(() => {
-    if (!state.currentId || state.nodes.length <= 2) return;
+    if (!state.currentId) return;
+
+    if (state.nodes.length <= 2) {
+      // If we're editing an existing grammar and only two nodes are left, delete it
+      const existingGrammar = savedGrammarsHandlers.savedGrammars.find(g => g.id === state.currentId);
+      if (existingGrammar) {
+        savedGrammarsHandlers.handleDelete(state.currentId);
+      }
+      return;
+    }
 
     savedGrammarsHandlers.saveCurrentGrammar(
       state.currentId,
