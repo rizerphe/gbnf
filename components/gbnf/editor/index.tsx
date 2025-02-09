@@ -50,6 +50,7 @@ function GBNFEditorInner({
     onConnect,
     setNodes,
     setEdges,
+    selectedNodes,
     setSelectedNodes,
     resetState,
     handleExport,
@@ -81,6 +82,11 @@ function GBNFEditorInner({
         }))
       );
     },
+    nodes,
+    edges,
+    selectedNodes,
+    setNodes,
+    setEdges,
   });
 
   // Drag and drop

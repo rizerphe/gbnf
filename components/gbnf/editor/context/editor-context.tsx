@@ -26,6 +26,7 @@ interface EditorContextType {
   currentId: string | null;
   currentName: string | null;
   isEditingName: boolean;
+  selectedNodes: string[];
   setCurrentName: (name: string | null) => void;
   setIsEditingName: (editing: boolean) => void;
   
